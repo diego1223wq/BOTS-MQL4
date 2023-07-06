@@ -1,0 +1,114 @@
+#property copyright "Copyright 2023, MetaQuotes Software Corp."
+#property link      "https://www.mql5.com"
+#property version   "1.00"
+#property strict
+
+
+input int n=10;
+//+------------------------------------------------------------------+
+//| Custom indicator initialization function                         |
+//+------------------------------------------------------------------+
+
+double EMA_Value;
+int Magic = 1;
+double SL = 1.0;
+double TP = 3.0;
+
+
+int OnInit()
+  {
+
+   return(INIT_SUCCEEDED);
+  }
+
+void OnTick()
+  {
+  int Index=0;
+  int Index2=0;
+   double altoo; 
+   double bajoo;
+   int y=0;
+   int m=0;
+   double alto2=0;
+   double bajo2=9999;
+   datetime time2=0;
+   int limit;
+   double high1=0;
+   double low1=0;
+   
+    limit=Bars-IndicatorCounted();
+     for(int i=0;i<limit;i++)
+    {
+      int x=(2*n)+1;
+      int alto= iHighest(Symbol(), _Period,MODE_HIGH , x, i);
+      int bajo= iLowest (Symbol(), _Period, MODE_LOW , x, i);      
+      if(alto==n+i){ 
+         m++;
+         altoo = High[alto];
+      for (int i = 0; i < m; i++) {
+            if (iHigh(Symbol(),0,i)> altoo) {
+              altoo = iHigh(Symbol(),0,i);
+            }
+         }
+      }   
+      if(bajo==n+i){
+         y++;
+         bajoo = Low[bajo];
+      for (int j = 0; j < y;j++) {
+            if (iLow(Symbol(),0,j)< bajoo) {
+              bajoo = iLow(Symbol(),0,j);
+            }
+         }        
+      }
+    }
+    
+   EMA_Value = iMA(Symbol(), 0, 20, 0, MODE_EMA, PRICE_CLOSE, 0);
+   if(OperacionesAbiertas(Symbol())==0){
+      if(Filtro()==true){
+         OrderSend(NULL,OP_SELLLIMIT,1.0,altoo,1,altoo+10*Point,altoo-30*Point,"Es una venta",Magic);
+      }
+      if(Filtro()==true){
+       OrderSend(NULL,OP_BUYLIMIT,1.0,bajoo,1,bajoo-10*Point,bajoo+30*Point,"Es una compra",Magic);
+      }
+   }   
+}
+  
+
+
+
+
+int OperacionesAbiertas(string symbol){
+int NumOrdenes=0;
+   for(int i =0;i<OrdersTotal();i++){
+      if(OrderSelect(i,SELECT_BY_POS,MODE_TRADES)==true && OrderSymbol()==symbol){
+         if(((OrderType()==OP_SELLLIMIT) && (OrderMagicNumber()== Magic)) || ((OrderType()==OP_BUYLIMIT) && OrderMagicNumber()==Magic)){
+            NumOrdenes++;
+            break;
+         }
+      }
+   }
+   return NumOrdenes;
+}
+
+void Cerrar(){
+   for(int i=0;i<OrdersTotal();i++){
+      if(OrderSelect(i,SELECT_BY_POS,MODE_TRADES)==true){
+         if(OrderSymbol()==Symbol() && OrderMagicNumber()==Magic){
+            if(OrderType()==OP_BUYLIMIT){
+               OrderClose(OrderTicket(),OrderLots(),Bid,1);
+            }
+            if(OrderType()==OP_SELLLIMIT){
+               OrderClose(OrderTicket(),OrderLots(),Ask,1);
+            }             
+         }
+      }
+   }
+}
+
+bool Filtro(){
+   if(Hour()>=3 && Hour()<11 ){
+      return true;
+   }
+   else
+   return false;
+}
