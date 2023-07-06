@@ -1,0 +1,108 @@
+#property copyright "Copyright 2023, MetaQuotes Software Corp."
+#property link      "https://www.mql5.com"
+#property version   "1.00"
+#property strict
+
+
+input int CantidadDeVelas=10;
+//+------------------------------------------------------------------+
+//| Custom indicator initialization function                         |
+//+------------------------------------------------------------------+
+
+double EMA_Value;
+int Magic = 1; // numero de la venta en la que se visualizará el resultado
+
+int OnInit()
+  {
+
+   return(INIT_SUCCEEDED);
+  }
+
+void OnTick()
+  {
+   double ValorAltoDelRecorrido; 
+   double ValorBajoDelRecorrido;
+   int CantidadDeVelasBajas=0;
+   int CantidadDeVelasAltas=0;
+   int LimiteDeVelas;
+   double high1=0;
+   double low1=0;
+   
+    LimiteDeVelas=Bars-IndicatorCounted();
+     for(int i=0;i<LimiteDeVelas;i++)
+    {
+      int IndiceDeLaMayorVela=(2*CantidadDeVelas)+1;
+      int IndiceAltoDelRecorrido= iHighest(Symbol(), _Period,MODE_HIGH , IndiceDeLaMayorVela, i);
+      int IndiceBajoDelRecorrido= iLowest (Symbol(), _Period, MODE_LOW , IndiceDeLaMayorVela, i);      
+      if(IndiceAltoDelRecorrido==CantidadDeVelas+i){ 
+         m++;
+         ValorAltoDelRecorrido = High[IndiceAltoDelRecorrido];
+	//En caso la vela 0 sea mayor a la anterior se valida sin recorrer las 10 velas.
+      for (int i = 0; i < CantidadDeVelasAltas; i++) {
+            if (iHigh(Symbol(),0,i)> ValorAltoDelRecorrido) {
+              ValorAltoDelRecorrido = iHigh(Symbol(),0,i);
+            }
+         }
+      }   
+      if(IndiceBajoDelRecorrido==CantidadDeVelas+i){
+         y++;
+         ValorBajoDelRecorrido = Low[IndiceBajoDelRecorrido];
+	//En caso la vela 0 sea menor a la anterior se valida sin recorrer las 10 velas.
+      for (int j = 0; j < CantidadDeVelasBajas;j++) {
+            if (iLow(Symbol(),0,j)< ValorBajoDelRecorrido) {
+              ValorBajoDelRecorrido = iLow(Symbol(),0,j);
+            }
+         }        
+      }
+    }
+    
+   EMA_Value = iMA(Symbol(), 0, 20, 0, MODE_EMA, PRICE_CLOSE, 0);
+   if(OperacionesAbiertas(Symbol())==0){
+      if(HoraParaOperarOrdeness()==true){
+         OrderSend(NULL,OP_SELLLIMIT,1.0,ValorAltoDelRecorrido,1,ValorAltoDelRecorrido+10*Point,ValorAltoDelRecorrido-30*Point,"Es una venta",Magic);
+      }
+      if(HoraParaOperarOrdeness()==true){
+       OrderSend(NULL,OP_BUYLIMIT,1.0,ValorBajoDelRecorrido,1,ValorBajoDelRecorrido-10*Point,ValorBajoDelRecorrido+30*Point,"Es una compra",Magic);
+      }
+   }   
+}
+  
+
+
+
+
+int OperacionesAbiertas(string symbol){
+int CantidadDeOrdenes=0;
+   for(int i =0;i<OrdersTotal();i++){
+      if(OrderSelect(i,SELECT_BY_POS,MODE_TRADES)==true && OrderSymbol()==symbol){
+         if(((OrderType()==OP_SELLLIMIT) && (OrderMagicNumber()== Magic)) || ((OrderType()==OP_BUYLIMIT) && OrderMagicNumber()==Magic)){
+            CantidadDeOrdenes++;
+            break;
+         }
+      }
+   }
+   return NumOrdenes;
+}
+
+void CerrarTodasLasOperaciones(){
+   for(int i=0;i<OrdersTotal();i++){
+      if(OrderSelect(i,SELECT_BY_POS,MODE_TRADES)==true){
+         if(OrderSymbol()==Symbol() && OrderMagicNumber()==Magic){
+            if(OrderType()==OP_BUYLIMIT){
+               OrderClose(OrderTicket(),OrderLots(),Bid,1);
+            }
+            if(OrderType()==OP_SELLLIMIT){
+               OrderClose(OrderTicket(),OrderLots(),Ask,1);
+            }             
+         }
+      }
+   }
+}
+
+bool HoraParaOperarOrdenes(){
+   if(Hour()>=3 && Hour()<11 ){
+      return true;
+   }
+   else
+   return false;
+}
